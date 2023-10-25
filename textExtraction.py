@@ -1,6 +1,6 @@
 import pdfplumber
 
-def extractText(pdf=None):
+def extract_text(pdf=None):
     # extract text from pdf
     if pdf is not None:
         text = ""
@@ -10,6 +10,6 @@ def extractText(pdf=None):
     return text
 
 if __name__ == '__main__':
-    print(extractText("./sample_pdf/TheLittlePrince.pdf"))
+    print(extract_text("./sample_pdf/TheLittlePrince.pdf"))
 
 
