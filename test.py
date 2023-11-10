@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings('ignore')
+
 from langchain.document_loaders import TextLoader  #for textfiles
 from langchain.text_splitter import CharacterTextSplitter #text splitter
 from langchain.embeddings import HuggingFaceEmbeddings #for using HugginFace models
@@ -20,7 +23,7 @@ with open("KS-all-info_rev1.txt", "w") as f:
 
 import os
 
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = 'XXX'
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = 'xxx'
 
 # Document Loader
 from langchain.document_loaders import TextLoader
@@ -54,10 +57,10 @@ db = FAISS.from_documents(docs, embeddings)
 from langchain.chains.question_answering import load_qa_chain
 from langchain import HuggingFaceHub
 
-llm6=HuggingFaceHub(repo_id="MBZUAI/LaMini-Flan-T5-783M", model_kwargs={"temperature":0, "max_length":512})
+llm6 = HuggingFaceHub(repo_id="MBZUAI/LaMini-Flan-T5-783M", model_kwargs={"temperature":0, "max_length":512})
 chain = load_qa_chain(llm6, chain_type="stuff")
 #our questions
-query = "What is the case study challenge"
+query = "What is Hierarchy 4.0?"
 docs = db.similarity_search(query)
 response = chain.run(input_documents=docs, question=query)
 
