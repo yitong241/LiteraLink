@@ -10,11 +10,8 @@ from torch.utils.data import Dataset
 from transformers import LlamaTokenizer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-tokenizer = AutoTokenizer.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer")
-model = AutoModelForSeq2SeqLM.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer")
-
 class BookQADataset(Dataset):
-    def __init__(self, tokenizer, data, section_length, max_sections, max_length, mode):
+    def __init__(self, tokenizer, data, max_length, section_length, max_sections, mode=None, do_qg=False):
         self.tokenizer = tokenizer
         self.data = data
         self.section_length = section_length
@@ -25,13 +22,16 @@ class BookQADataset(Dataset):
         self.inst_format_data = []
         self.input_data = []
 
-        self.process_sections()
+        if do_qg:
+            if mode == "t5-large":
+                self.qg_tokenizer = AutoTokenizer.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer")
+                self.qg_model = AutoModelForSeq2SeqLM.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer", 
+                                                                    device_map="auto")
 
-        if mode == "t5-large":
-            self.qg_tokenizer = AutoTokenizer.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer")
-            self.qg_model = AutoModelForSeq2SeqLM.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer")
-
-        self.process_format()
+            self.process_sections()
+            self.process_format()
+        else:
+            self.inst_format_data = data
 
     def process_sections(self):
         print("Processing dataset...")
@@ -53,13 +53,12 @@ class BookQADataset(Dataset):
                 #     continue
                 # question, answer = qa_pair[0]['question'], qa_pair[0]['answer']
                 question, answer = generate_question(self.qg_tokenizer, self.qg_model, section_text)
-                self.processed_data.append({
-                    'context': section_text,
-                    'question': question,
-                    'answer': answer
-                })
-
-            # time.sleep(10)
+                if question is not None and answer is not None:
+                    self.processed_data.append({
+                        'context': section_text,
+                        'question': question,
+                        'answer': answer
+                    })
         random.shuffle(self.processed_data)
 
     def process_format(self):
@@ -82,11 +81,13 @@ class BookQADataset(Dataset):
 
     def __getitem__(self, item):
         if not self.input_data:
-            return self.processed_data[item]
-        return self.input_data[item]
+            return self.inst_format_data[item]['instruction'], self.inst_format_data[item]['input'], self.inst_format_data[item]['output']
+        return self.input_data[item]['instruction'], self.input_data[item]['input'], self.input_data[item]['output']
 
     def __len__(self):
-        return len(self.processed_data)
+        if not self.input_data:
+            return len(self.inst_format_data)
+        return len(self.input_data)
 
     def save_data(self, save_path):
         with open(save_path, "w") as f:
@@ -104,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument("--section_length", type=int, default=200)
     parser.add_argument("--max_sections", type=int, default=15)
     parser.add_argument("--max_length", type=int, default=512)
+    parser.add_argument("--mode", type=str, default="t5-large")
     args = parser.parse_args()
 
     tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
@@ -113,10 +115,10 @@ if __name__ == '__main__':
     train_data = train_data.select(range(args.train_data_size))
     val_data = val_data.select(range(args.val_data_size))
 
-    train_dataset = BookQADataset(tokenizer, train_data, args.section_length, args.max_sections, args.max_length)
-    val_dataset = BookQADataset(tokenizer, val_data, args.section_length, args.max_sections, args.max_length)
-
+    train_dataset = BookQADataset(tokenizer, train_data, args.max_length, args.section_length, args.max_sections, args.mode)
     train_dataset.save_data(args.train_save_path)
+    
+    val_dataset = BookQADataset(tokenizer, val_data, args.max_length, args.section_length, args.max_sections, args.mode)
     val_dataset.save_data(args.val_save_path)
 
 

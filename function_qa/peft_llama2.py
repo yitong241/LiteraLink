@@ -38,8 +38,7 @@ class SavePeftModelCallback(TrainerCallback):
 def generate_and_tokenize_prompt(data_point, tokenizer, max_length):
     # This function masks out the labels for the input,
     # so that our loss is computed only on the response.
-    user_prompt = f"""Below is an instruction that describes a task, paired with an input that provides further context. 
-    Write a response that appropriately completes the request.
+    user_prompt = f"""Below is a question paired with an input that provides further context. Write a response that fills in the '_'.
     ### Instruction: {data_point["instruction"]}
     ### Input: {data_point["input"]}
     ### Response: """
@@ -90,6 +89,7 @@ def prepare_model_and_tokenizer(args):
         lora_dropout=args.lora_dropout,
         bias="none",
         task_type="CAUSAL_LM",
+        target_modules=['k_proj', 'q_proj', 'v_proj', 'o_proj']
     )
     model = get_peft_model(model, config)
 
@@ -98,12 +98,12 @@ def prepare_model_and_tokenizer(args):
 
 
 def prepare_data(args, tokenizer):
-    train_data, val_data, _ = load_dataset("kmfoda/booksum", split=["train", "validation", "test"])
-    train_data = train_data.select(range(args.train_data_size))
-    val_data = val_data.select(range(args.val_data_size))
+    # train_data, val_data, _ = load_dataset("kmfoda/booksum", split=["train", "validation", "test"])
+    train_data = load_dataset("json", data_files=args.train_data_path)["train"]
+    val_data = load_dataset("json", data_files=args.val_data_path)["train"]
 
-    train_dataset = BookQADataset(tokenizer, train_data, args.section_length, args.max_section, args.max_length)
-    val_dataset = BookQADataset(tokenizer, val_data, args.section_length, args.max_section, args.max_length)
+    train_dataset = BookQADataset(tokenizer, train_data, args.max_length, args.section_length, args.max_sections, do_qg=False)
+    val_dataset = BookQADataset(tokenizer, val_data, args.max_length, args.section_length, args.max_sections, do_qg=False)
 
     train_dataset.map(generate_and_tokenize_prompt)
     val_dataset.map(generate_and_tokenize_prompt)
@@ -114,25 +114,24 @@ def prepare_data(args, tokenizer):
 def train(args):
     tokenizer, model = prepare_model_and_tokenizer(args)
     train_dataset, val_dataset = prepare_data(args, tokenizer)
-
+    
     train_args = transformers.TrainingArguments(
         per_device_train_batch_size=args.micro_batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         warmup_steps=100,
         num_train_epochs=args.epochs,
-        max_steps=args.max_step,
         learning_rate=args.learning_rate,
         fp16=True,
-        logging_steps=50,
-        evaluation_strategy="steps" if args.test_size > 0 else "no",
+        logging_steps=100,
+        evaluation_strategy="steps",
         save_strategy="steps",
-        eval_steps=args.eval_steps if args.test_size > 0 else None,
+        eval_steps=args.eval_steps,
         save_steps=args.save_steps,
         output_dir=args.output_path,
         save_total_limit=30,
-        load_best_model_at_end=True if args.test_size > 0 else False,
-        ddp_find_unused_parameters=False if args.ddp else None,
-        report_to="wandb" if args.wandb else [],
+        load_best_model_at_end=True,
+        ddp_find_unused_parameters=None,
+        report_to="tensorboard",
         ignore_data_skip=args.ignore_data_skip,
     )
 
@@ -155,8 +154,9 @@ def train(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wandb", default=True)
-    parser.add_argument("--data_path", type=str, default="/path/to/data")
+    parser.add_argument("--wandb", default=False)
+    parser.add_argument("--train_data_path", type=str, default="/path/to/data")
+    parser.add_argument("--val_data_path", type=str, default="/path/to/data")
     parser.add_argument("--output_path", type=str, default="/path/to/output")
     parser.add_argument("--model_path", type=str, default="/path/to/model")
     parser.add_argument("--eval_steps", type=int, default=1000)
@@ -179,4 +179,5 @@ if __name__ == '__main__':
     parser.add_argument("--max_sections", type=int, default=15)
     args = parser.parse_args()
 
+    os.environ["WANDB_DISABLED"]="True"
     train(args)

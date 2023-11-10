@@ -3,7 +3,7 @@ import random
 from datasets import load_dataset
 
 
-API_KEY = "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"
+API_KEY = "random_key"
 openai.api_key = API_KEY
 
 system_msgs = {

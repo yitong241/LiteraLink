@@ -1,6 +1,6 @@
-MODEL_PATH="/Users/zekaili/Documents/Pretrain-LM/vicuna-7b-v1.3"
-TRAIN_SAVE_PATH="train_data_30.json"
-VAL_SAVE_PATH="val_data_10.json"
+MODEL_PATH="/home/lizekai/llama-2-7b-hf"
+TRAIN_SAVE_PATH="train_data.json"
+VAL_SAVE_PATH="val_data.json"
 
 nohup python3 construct_dataset.py \
 --model_path $MODEL_PATH \
