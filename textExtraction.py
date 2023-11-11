@@ -1,8 +1,9 @@
 import pdfplumber
 
 
-def extract_text(pdf=None, start_page=6, end_page=8):
+def extract_text(pdf=None, start_page=5, end_page=5):
     with pdfplumber.open(pdf) as pdf:
+        total_pages = len(pdf.pages)
         text = ''
         for i in range(start_page - 1, end_page):  
             page = pdf.pages[i]
@@ -10,11 +11,14 @@ def extract_text(pdf=None, start_page=6, end_page=8):
 
     with open("sample_pdf/output.txt", "w") as f:
         f.write(text)
-        
-    return True
+
+    print("-----------------")
+    print("Total number of words selected:", len(text))
+    print("-----------------")
+    return text, total_pages
 
 
 if __name__ == '__main__':
-    print(extract_text("./sample_pdf/TheLittlePrince.pdf"))
+    print(extract_text("./sample_pdf/Animal Farm.pdf"))
 
 
