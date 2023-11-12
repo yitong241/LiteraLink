@@ -2,11 +2,14 @@ import streamlit as st
 from responseGeneration import *
 from textExtraction import *
 from summary import *
+from interface import *
+
 
 st.set_page_config(page_title="LiteraLink")
 st.header("LiteraLink: PDF Local Knowledge Base")
 # upload the file
 pdf = st.file_uploader("Upload your PDF file", type="pdf")
+
 
 if pdf:
     text, num_pages = extract_text(pdf)
