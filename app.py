@@ -1,5 +1,4 @@
 import streamlit as st
-from responseGeneration import *
 from textExtraction import *
 from summary import *
 from interface import *
@@ -21,18 +20,30 @@ if pdf:
         with st.spinner('Generating your summary...'):
             summary = summarize_text(text)
             st.success('Done! Here is your summary:')
-
         st.write(summary)
 
-        user_question = st.text_input("Ask me anything about the content：")
+        if st.button('Ask a question'):
+            user_question = st.text_input("Ask me anything about the content：")
+            st.write(user_question)
+            if user_question:
+                with st.spinner('Getting the answer...'):
+                    response = question_answering(user_question, text)
+                    st.success('Done!')
+                st.balloons()
+                st.write(response)
 
-        st.write(user_question)
+        if st.button('Generate some questions'):
+            ques_num = st.number_input('How many questions do you want to generate?', min_value=1, max_value=10, step=1)
+            if ques_num:
+                with st.spinner('Generating questions...'):
+                    qa_pairs = question_generation(text, ques_num)
+                    st.success('Done!')
+                st.balloons()
 
-        if user_question:
-            with st.spinner('Getting the answer...'):
-                response = generate_response(text, user_question)
-                st.success('Done!')
-            st.balloons()
-            st.write(response)
+                for item in qa_pairs:
+                    with st.expander(item['question']):
+                        st.write(item['answer'])
+
+
 else:
     st.write("Please upload a PDF file")
