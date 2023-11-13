@@ -12,9 +12,9 @@ def extract_text(pdf=None, start_page=5, end_page=5):
     # with open("sample_pdf/output.txt", "w") as f:
     #     f.write(text)
 
-    print("-----------------")
-    print("Total number of words selected:", len(text))
-    print("-----------------")
+    # print("-----------------")
+    # print("Total number of words selected:", len(text))
+    # print("-----------------")
     return text, total_pages
 
 

@@ -36,6 +36,7 @@ def summarization(tokenizer, model, text):
     
 
 def question_answering(tokenizer, model, user_question, context):
+    # return "here is the answer"
     # prompt = f"""Below is a question paired with context. Please write a response to answer the question
     # ###Question: {user_question}
     # ###Context: {context}
@@ -61,12 +62,12 @@ def question_answering(tokenizer, model, user_question, context):
     #     max_new_tokens=answer_length
     # )
     outputs = model.generate(input_ids)
-
-    answer = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return answer
 
 
 def question_generation(qg_tokenizer, qg_model, content, ques_num):
+    # return [{'question': "q", 'answer': "a"}, {'question': "how are you", 'answer': "good"}]
     content_words = content.split()
     chunk_size = int(len(content_words) / ques_num)
     qa_pairs = []
