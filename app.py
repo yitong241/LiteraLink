@@ -22,12 +22,12 @@ st.header("LiteraLink: PDF Local Knowledge Base")
 # upload the file
 pdf = st.file_uploader("Upload your PDF file", type="pdf")
 
-device = torch.device("mps")
-tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-large")
-model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-large").to(device)
+device = torch.device("cuda")
+tokenizer = T5Tokenizer.from_pretrained("flan-t5-book")
+model = T5ForConditionalGeneration.from_pretrained("flan-t5-book").to(device)
 
-qg_tokenizer = AutoTokenizer.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer")
-qg_model = AutoModelForSeq2SeqLM.from_pretrained("potsawee/t5-large-generation-race-QuestionAnswer").to(device)
+qg_tokenizer = AutoTokenizer.from_pretrained("flan-t5-large-qg")
+qg_model = AutoModelForSeq2SeqLM.from_pretrained("flan-t5-large-qg").to(device)
 
 if pdf:
     text, num_pages = extract_text(pdf)
