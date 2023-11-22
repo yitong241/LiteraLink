@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from transformers import LlamaTokenizer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
+
 class BookQADataset(Dataset):
     def __init__(self, tokenizer, data, max_length, section_length, max_sections, mode=None, do_qg=False):
         self.tokenizer = tokenizer
