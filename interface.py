@@ -1,4 +1,4 @@
-from code.qg_t5_large import generate_question
+from functions.qg_t5_large import generate_question
 from prompts import prompt_templates
 
 
