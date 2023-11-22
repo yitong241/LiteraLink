@@ -50,6 +50,33 @@ def process_data(example):
     }
 
 
+def process_data_for_trainer(example):
+
+    text = example['chapter'][:5000]
+    summary = example['summary_text']
+    model_input = {}
+    processed_text = "Write a summary for this text: {text}".format(text=text)
+    inputs = tokenizer(
+        processed_text,
+        max_length=1024,
+        padding='max_length',
+        truncation=True,
+        return_tensors='pt'
+    )
+    model_input['input_ids'] = inputs['input_ids'][0]
+    model_input['attention_mask'] = inputs['attention_mask'][0]
+
+    tokenized_summary = tokenizer(
+        summary,
+        max_length=512,
+        padding='max_length',
+        truncation=True,
+        return_tensors='pt'
+    )
+    model_input['labels'] = tokenized_summary['input_ids'][0]
+    return model_input
+
+
 def create_data_loader(config, train_ds, val_ds):
     train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=config.batch_size, shuffle=False)
@@ -66,6 +93,16 @@ def data_helper(config):
 
     train_loader, val_loader = create_data_loader(config, train_ds, val_ds)
     return train_loader, val_loader
+
+def data_helper_for_trainer(config):
+    train_ds, val_ds = load_data(config.dataset)
+    train_ds = train_ds.map(process_data_for_trainer)
+    val_ds = val_ds.map(process_data_for_trainer)
+
+    # train_ds.set_format(type='torch')
+    # val_ds.set_format(type='torch')
+
+    return train_ds, val_ds
 
 
 def generate_sample(config):

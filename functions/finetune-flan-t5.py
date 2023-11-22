@@ -1,15 +1,24 @@
+import os
+
+os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 import torch
 import argparse
 import json
+import nltk
+import evaluate
+import numpy as np
 import torch.optim as optim
-from transformers import T5ForConditionalGeneration, T5Tokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Seq2SeqTrainingArguments, Seq2SeqTrainer, \
+    DataCollatorForSeq2Seq
 from torchmetrics.text.rouge import ROUGEScore
-from data import data_helper
+from data import data_helper, data_helper_for_trainer
 from pprint import pprint
+
+tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
+metrics = ROUGEScore(use_stemmer=True)
 
 
 def save_log(batch_idx, predictions, targets, rouge_scores):
-
     for key in rouge_scores.keys():
         rouge_scores[key] = rouge_scores[key].item()
 
@@ -83,28 +92,82 @@ def evaluate(val_loader, model, metric, tokenizer):
     return predictions, targets, rouge_score
 
 
+def compute_metrics(eval_pred):
+    predictions, labels = eval_pred
+    decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
+    # Replace -100 in the labels as we can't decode them.
+    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    # Rouge expects a newline after each sentence
+    decoded_preds = ["\n".join(nltk.sent_tokenize(pred.strip())) for pred in decoded_preds]
+    decoded_labels = ["\n".join(nltk.sent_tokenize(label.strip())) for label in decoded_labels]
+
+    # Note that other metrics may not have a `use_aggregator` parameter
+    # and thus will return a list, computing a metric for each sentence.
+    result = metrics(decoded_preds, decoded_labels)
+    # Extract a few results
+    result = {key: value * 100 for key, value in result.items()}
+
+    # Add mean generated length
+    # prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in predictions]
+    # result["gen_len"] = np.mean(prediction_lens)
+
+    return result
+
+
 def train(config):
+    # if config.seed is not None:
+    #     torch.manual_seed(config.seed)
+    #     torch.cuda.manual_seed_all(config.seed)
+    #     torch.backends.cudnn.deterministic = True
 
-    if config.seed is not None:
-        torch.manual_seed(config.seed)
-        torch.cuda.manual_seed_all(config.seed)
-        torch.backends.cudnn.deterministic = True
+    # device = torch.device('cuda:0')
 
-    device = torch.device('cuda:0')
-
-    tokenizer = T5Tokenizer.from_pretrained(config.model_path)
     # model = T5ForConditionalGeneration.from_pretrained(config.model_config).to(device)
-    model = T5ForConditionalGeneration.from_pretrained(config.model_path).to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=config.init_lr, weight_decay=config.weight_decay)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_decay_step, config.lr_decay_rate)
-    metric = ROUGEScore()
 
-    train_loader, val_loader = data_helper(config)
+    # optimizer = optim.AdamW(model.parameters(), lr=config.init_lr, weight_decay=config.weight_decay)
+    # scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_decay_step, config.lr_decay_rate)
+    # metric = ROUGEScore()
 
-    for epoch in range(config.num_epochs):
-        train_epoch(config, epoch, train_loader, val_loader, model, optimizer, metric, tokenizer)
-        scheduler.step()
-        torch.save(model.state_dict(), config.save_path + "/model_{}.pth".format(epoch))
+    # train_loader, val_loader = data_helper(config)
+
+    # for epoch in range(config.num_epochs):
+    #     train_epoch(config, epoch, train_loader, val_loader, model, optimizer, metric, tokenizer)
+    #     scheduler.step()
+    #     torch.save(model.state_dict(), config.save_path + "/model_{}.pth".format(epoch))
+    model = AutoModelForSeq2SeqLM.from_pretrained(config.model_path, device_map="auto")
+    train_ds, val_ds = data_helper_for_trainer(config)
+
+    train_args = Seq2SeqTrainingArguments(
+        per_device_train_batch_size=config.batch_size,
+        per_device_eval_batch_size=config.batch_size,
+        warmup_steps=100,
+        num_train_epochs=config.num_epochs,
+        predict_with_generate=True,
+        learning_rate=config.init_lr,
+        fp16=True,
+        logging_steps=100,
+        evaluation_strategy="steps",
+        save_strategy="steps",
+        eval_steps=config.eval_steps,
+        save_steps=config.save_steps,
+        output_dir=config.save_path,
+        save_total_limit=30,
+        load_best_model_at_end=True,
+        report_to="wandb"
+    )
+
+    trainer = Seq2SeqTrainer(
+        model=model,
+        args=train_args,
+        train_dataset=train_ds,
+        eval_dataset=val_ds,
+        compute_metrics=compute_metrics,
+        data_collator=DataCollatorForSeq2Seq(tokenizer, model=model)
+    )
+
+    trainer.train()
 
 
 if __name__ == '__main__':
@@ -132,6 +195,8 @@ if __name__ == '__main__':
     parser.add_argument('--eval_checkpoint', type=int, default=1000)
     parser.add_argument('--dropout_p', type=float, default=0.5)
     parser.add_argument('--lr_decay_step', type=int, default=1)
+    parser.add_argument("--eval_steps", type=int, default=1000)
+    parser.add_argument("--save_steps", type=int, default=1000)
 
     # pretrain model settings
     parser.add_argument('--max_length', type=int, default=512)
