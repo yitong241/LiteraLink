@@ -5,29 +5,17 @@ from summary import *
 from interface import *
 from transformers import T5Tokenizer, T5ForConditionalGeneration, AutoTokenizer, AutoModelForSeq2SeqLM
 
-# vicuna = LlamaForCausalLM.from_pretrained(
-#     "/home/lizekai/vicuna-7b-v1.3",
-#     load_in_8bit=True,
-#     torch_dtype=torch.float16,
-#     device_map="auto",
-# )
-# vicuna_lora = PeftModelForCausalLM.from_pretrained(
-#     vicuna,
-#     "function_qa/vicuna-lora-book-qa",
-#     device_map="auto"
-# )
-
 st.set_page_config(page_title="LiteraLink")
 st.header("LiteraLink: PDF Local Knowledge Base")
 # upload the file
 pdf = st.file_uploader("Upload your PDF file", type="pdf")
 
 device = torch.device("cuda")
-tokenizer = T5Tokenizer.from_pretrained("flan-t5-book")
-model = T5ForConditionalGeneration.from_pretrained("flan-t5-book").to(device)
+tokenizer = T5Tokenizer.from_pretrained("logits/flan-t5-booksum")
+model = T5ForConditionalGeneration.from_pretrained("logits/flan-t5-booksum").to(device)
 
-qg_tokenizer = AutoTokenizer.from_pretrained("flan-t5-large-qg")
-qg_model = AutoModelForSeq2SeqLM.from_pretrained("flan-t5-large-qg").to(device)
+qg_tokenizer = AutoTokenizer.from_pretrained("logits/flan-t5-booksum-qg")
+qg_model = AutoModelForSeq2SeqLM.from_pretrained("logits/flan-t5-booksum-qg").to(device)
 
 if pdf:
     text, num_pages = extract_text(pdf)
@@ -37,9 +25,7 @@ if pdf:
     if st.button('Submit') and text and page:
         submitted = True
         with st.spinner('Generating your summary...'):
-            # summary = summarize_text(text)
-            # summary = summarization(tokenizer, model, text)
-            summary = "summary"
+            summary = summarization(tokenizer, model, text)
             st.success('Done! Here is your summary:')
         st.write(summary)
 
