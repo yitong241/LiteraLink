@@ -64,11 +64,6 @@ def generate_and_tokenize_prompt(data_point, tokenizer, max_length):
         "attention_mask": [1] * (len(full_tokens)),
     }
 
-
-def compute_metrics(pred):
-    pass
-
-
 def prepare_model_and_tokenizer(args):
     tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
     tokenizer.pad_token_id = 0

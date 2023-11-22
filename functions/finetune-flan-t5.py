@@ -1,6 +1,4 @@
 import os
-
-os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 import torch
 import argparse
 import json
@@ -109,33 +107,10 @@ def compute_metrics(eval_pred):
     # Extract a few results
     result = {key: value * 100 for key, value in result.items()}
 
-    # Add mean generated length
-    # prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in predictions]
-    # result["gen_len"] = np.mean(prediction_lens)
-
     return result
 
 
 def train(config):
-    # if config.seed is not None:
-    #     torch.manual_seed(config.seed)
-    #     torch.cuda.manual_seed_all(config.seed)
-    #     torch.backends.cudnn.deterministic = True
-
-    # device = torch.device('cuda:0')
-
-    # model = T5ForConditionalGeneration.from_pretrained(config.model_config).to(device)
-
-    # optimizer = optim.AdamW(model.parameters(), lr=config.init_lr, weight_decay=config.weight_decay)
-    # scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_decay_step, config.lr_decay_rate)
-    # metric = ROUGEScore()
-
-    # train_loader, val_loader = data_helper(config)
-
-    # for epoch in range(config.num_epochs):
-    #     train_epoch(config, epoch, train_loader, val_loader, model, optimizer, metric, tokenizer)
-    #     scheduler.step()
-    #     torch.save(model.state_dict(), config.save_path + "/model_{}.pth".format(epoch))
     model = AutoModelForSeq2SeqLM.from_pretrained(config.model_path, device_map="auto")
     train_ds, val_ds = data_helper_for_trainer(config)
 
